@@ -1,0 +1,678 @@
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "lexer.h"
+
+int bufsize = 1000;
+char *begin = NULL;
+char *fwd = NULL;
+char *twinBuf[2];
+int currBuf = 1;
+int state = 0;
+int lines = 0;
+int noInputLeft = 0;
+FILE *fp;
+
+FILE *getStream()
+{
+	if (noInputLeft != 0)
+		return NULL;
+	currBuf = 1 - currBuf;
+	memset(twinBuf[currBuf], EOF, bufsize);
+	int count;
+	if (!feof(fp))
+		count = fread(twinBuf[currBuf], 1, bufsize, fp);
+
+	if (count < bufsize)
+	{
+		twinBuf[currBuf][count] = '\0';
+		noInputLeft = 1;
+	}
+	if (count < 0)
+	{
+		printf("Error in reading");
+		return NULL;
+	}
+	return fp;
+}
+
+void initializeLexer(FILE *f)
+{
+	fp = f;
+	currBuf = 1;
+	state = 0;
+	lines = 0;
+	noInputLeft = 0;
+	begin = NULL;
+	fwd = NULL;
+	twinBuf[0] = (char *)malloc(bufsize * sizeof(char));
+	twinBuf[1] = (char *)malloc(bufsize * sizeof(char));
+	return;
+}
+
+char getChar()
+{
+	if (begin == NULL && fwd == NULL)
+	{
+		getStream();
+		begin = twinBuf[currBuf];
+		fwd = twinBuf[currBuf];
+		char res = *fwd;
+		if (*fwd == '\n')
+			lines++;
+		fwd++;
+		return res;
+	}
+	else if (fwd - begin == bufsize - 1)
+	{
+		getStream(fp);
+		fwd = twinBuf[currBuf];
+	}
+	else if (*fwd == EOF)
+		return EOF;
+	else
+		fwd++;
+	if (*fwd == '\n')
+		lines++;
+	return *fwd;
+}
+
+void tokenized()
+{
+	fwd++;
+	begin = fwd;
+	fwd--;
+}
+
+char *makeLexeme(char *first, char *last)
+{
+	char *lexeme = (char *)malloc((last - first + 2) * sizeof(char));
+	char *curr = first;
+	int i;
+	for (i = 0; curr <= last; i++)
+	{
+		lexeme[i] = *curr;
+		curr++;
+	}
+	lexeme[i] = '\0';
+	return lexeme;
+}
+
+Token *makeToken(TokenName tokenName, char *lexeme, int lineNo, int isNum, number *number)
+{
+	Token *newTk = (Token *)malloc(sizeof(Token));
+	newTk->lexeme = lexeme;
+	newTk->isNum = isNum;
+	newTk->lineNo = lineNo;
+	newTk->tokenName = tokenName;
+	newTk->number = number;
+	return newTk;
+}
+
+int compareString(char *c1, char *c2)
+{
+	int i = 0;
+	for (; c1[i] != '\0' && c2[i] != '\0'; i++)
+	{
+		if (c1[i] != c2[i])
+			return 0;
+	}
+	if (c1[i] != '\0' || c2[i] != '\0')
+		return 0;
+	return 1;
+}
+
+Token *normalReturn(TokenName tokenName)
+{
+	fwd--;
+	char *lexeme = makeLexeme(begin, fwd);
+	Token *token = makeToken(tokenName, lexeme, lines, 0, NULL);
+	tokenized();
+	return token;
+}
+
+Token *getNextToken()
+{
+	state = 0;
+	char c = 10;
+	while (1)
+	{
+		char c = getChar();
+		switch (state)
+		{
+		case 0:
+		{
+			if (c == '<')
+				state = 1;
+			else if (c >= 48 && c <= 57)
+				state = 7;
+			else if (c == '_')
+				state = 18;
+			else if (c == 98 || c == 99 || c == 100)
+				state = 22;
+			else if (c == 97 || (c >= 100 && c <= 122))
+				state = 26;
+			else if (c == '%')
+				state = 54;
+			else if (c == '#')
+				state = 56;
+			else if (c == '[')
+				state = 28;
+			else if (c == ']')
+				state = 29;
+			else if (c == ',')
+				state = 30;
+			else if (c == ';')
+				state = 31;
+			else if (c == '.')
+				state = 32;
+			else if (c == '(')
+				state = 33;
+			else if (c == ')')
+				state = 34;
+			else if (c == '+')
+				state = 35;
+			else if (c == '-')
+				state = 36;
+			else if (c == '*')
+				state = 37;
+			else if (c == '/')
+				state = 38;
+			else if (c == '&')
+				state = 39;
+			else if (c == '@')
+				state = 42;
+			else if (c == '~')
+				state = 45;
+			else if (c == '=')
+				state = 46;
+			else if (c == ':')
+				state = 48;
+			else if (c == '!')
+				state = 49;
+			else if (c == '>')
+				state = 51;
+			else if (c == 32 || c == '\t' || c == '\v' || c == '\r' || c == '\f')
+			{
+				begin++;
+				state = 0;
+			}
+			else if (c == '\n')
+			{
+				lines--;
+				begin++;
+				state = 0;
+			}
+			else if (c == EOF)
+			{
+				return NULL;
+			}
+			else
+			{
+				printf("Unrecognizable character %c at line %d\n", c, lines);
+				state = 65;
+			}
+			break;
+		}
+		case 1:
+		{
+			if (c == '-')
+				state = 2;
+			else if (c == '=')
+				state = 6;
+			else
+				state = 5;
+			break;
+		}
+		case 2:
+		{
+			if (c == '-')
+				state = 3;
+			else
+				state = 59;
+			break;
+		}
+		case 3:
+		{
+			if (c == '-')
+				state = 4;
+			else
+				state = 60;
+			break;
+		}
+		case 4:
+			return normalReturn(TK_ASSIGNOP);
+		case 5:
+		{
+			fwd--;
+			return normalReturn(TK_LT);
+		}
+		case 6:
+			return normalReturn(TK_LE);
+		case 7:
+		{
+			if (c >= 48 && c <= 57)
+				state = 7;
+			else if (c == '.')
+				state = 9;
+			else
+				state = 8;
+			break;
+		}
+		case 8:
+		{
+			fwd--;
+			fwd--;
+			char *lexeme = makeLexeme(begin, fwd);
+			int num = 0, i = 0;
+			for (; lexeme[i] != '\0'; i++)
+			{
+				num = 10 * num + lexeme[i] - '0';
+			}
+			number *intPartOfNum = (number *)malloc(sizeof(number));
+			(*intPartOfNum).NUM = num;
+			Token *token = makeToken(TK_NUM, lexeme, lines, 1, intPartOfNum);
+			tokenized();
+			return token;
+		}
+		case 9:
+		{
+			if (c >= 48 && c <= 57)
+				state = 10;
+			else
+				state = 61;
+			break;
+		}
+		case 10:
+		{
+			if (c >= 48 && c <= 57)
+				state = 11;
+			else
+				state = 64;
+			break;
+		}
+		case 11:
+		{
+			if (c == 'E')
+				state = 13;
+			else
+				state = 12;
+			break;
+		}
+		case 12:
+		{
+			fwd--;
+			fwd--;
+			char *lexeme = makeLexeme(begin, fwd);
+			float num = 0.0;
+			int i = 0;
+			for (; lexeme[i] != '.'; i++)
+			{
+				num = 10 * num + lexeme[i] - '0';
+			}
+			i++;
+			num = lexeme[i] / 10 + lexeme[i + 1] / 100;
+			number *floatPartOfNum = (number *)malloc(sizeof(number));
+			(*floatPartOfNum).RNUM = num;
+			Token *token = makeToken(TK_NUM, lexeme, lines, 1, floatPartOfNum);
+			tokenized();
+			return token;
+		}
+
+		case 13:
+		{
+			if (c == '+' || c == '-')
+				state = 14;
+			else if (c >= 48 && c <= 57)
+				state = 15;
+			else
+				state = 64;
+			break;
+		}
+		case 14:
+		{
+			if (c >= 48 && c <= 57)
+				state = 15;
+			else
+				state = 64;
+			break;
+		}
+		case 15:
+		{
+			if (c >= 48 && c <= 57)
+				state = 16;
+			else
+				state = 64;
+			break;
+		}
+		case 16:
+		{
+			// tokenise RNUM with exponent part
+			fwd--;
+			char *lexeme = makeLexeme(begin, fwd);
+			float f;
+			sscanf(lexeme, "%f", &f);
+			number *floatPartOfNum = (number *)malloc(sizeof(number));
+			(*floatPartOfNum).RNUM = f;
+			Token *token = makeToken(TK_NUM, lexeme, lines, 1, floatPartOfNum);
+			tokenized();
+			return token;
+			break;
+		}
+		case 18:
+		{
+			if ((c >= 97 && c <= 122) || (c >= 65 && c <= 90))
+				state = 19;
+			else
+				state = 64;
+			break;
+		}
+		case 19:
+		{
+			if (c >= 48 && c <= 57)
+				state = 20;
+			else if ((c >= 97 && c <= 122) || (c >= 65 && c <= 90))
+				state = 19;
+			else
+				state = 21; // check for _main
+			break;
+		}
+		case 20:
+		{
+			if (c >= 48 && c <= 57)
+				state = 20;
+			else
+				state = 21;
+			break;
+		}
+		case 21:
+		{
+			fwd--;
+			fwd--;
+			char *lexeme = makeLexeme(begin, fwd);
+			char tkmain[] = "_main";
+			Token *token = (Token *)malloc(sizeof(Token *));
+			if (compareString(tkmain, lexeme) == 1)
+				token = makeToken(TK_MAIN, lexeme, lines, 0, NULL);
+			else
+				token = makeToken(TK_FUNID, lexeme, lines, 0, NULL);
+			tokenized();
+			return token;
+		}
+		case 22:
+		{
+			if (c >= 50 && c <= 55)
+				state = 23;
+			else if (c >= 97 && c <= 122)
+				state = 26;
+			else
+				state = 63;
+			break;
+		}
+		case 23:
+		{
+			if (c == 'b' || c == 'c' || c == 'd')
+				state = 23;
+			else if (c >= 50 && c <= 55)
+				state = 24;
+			else
+				state = 25;
+			break;
+		}
+		case 24:
+		{
+			if (c >= 50 && c <= 55)
+				state = 24;
+			else
+				state = 25;
+			break;
+		}
+		case 25:
+		{
+			fwd--;
+			fwd--;
+			char *lexeme = makeLexeme(begin, fwd);
+			Token *token = makeToken(TK_ID, lexeme, lines, 0, NULL);
+			tokenized();
+			return token;
+		}
+		case 26:
+		{
+			if (c >= 97 && c <= 122)
+				state = 26;
+			else
+				state = 27;
+			break;
+		}
+		case 27:
+		{
+			fwd--;
+			return normalReturn(TK_FIELDID); // doubt - if entry already exists for this fieldID what to do ( currently returns new token)
+		}
+		case 28:
+			return normalReturn(TK_SQL);
+		case 29:
+			return normalReturn(TK_SQR);
+		case 30:
+			return normalReturn(TK_COMMA);
+		case 31:
+			return normalReturn(TK_SEM);
+		case 32:
+			return normalReturn(TK_DOT);
+		case 33:
+			return normalReturn(TK_OP);
+		case 34:
+			return normalReturn(TK_CL);
+		case 35:
+			return normalReturn(TK_PLUS);
+		case 36:
+			return normalReturn(TK_MINUS);
+		case 37:
+			return normalReturn(TK_MUL);
+		case 38:
+			return normalReturn(TK_DIV);
+		case 39:
+		{
+			if (c == '&')
+				state = 40;
+			else
+				state = 64;
+			break;
+		}
+		case 40:
+		{
+			if (c == '&')
+				state = 41;
+			else
+				state = 64;
+			break;
+		}
+		case 41:
+			return normalReturn(TK_AND);
+		case 42:
+		{
+			if (c == '@')
+				state = 43;
+			else
+				state = 64;
+			break;
+		}
+		case 43:
+		{
+			if (c == '@')
+				state = 44;
+			else
+				state = 64;
+			break;
+		}
+		case 44:
+			return normalReturn(TK_OR);
+		case 45:
+			return normalReturn(TK_NOT);
+		case 46:
+		{
+			if (c == '=')
+				state = 47;
+			else
+				state = 64;
+			break;
+		}
+		case 47:
+			return normalReturn(TK_EQ);
+		case 48:
+			return normalReturn(TK_COLON);
+		case 49:
+		{
+			if (c == '=')
+				state = 50;
+			else
+				state = 64;
+			break;
+		}
+		case 50:
+			return normalReturn(TK_NE);
+		case 51:
+		{
+			if (c == '=')
+				state = 53;
+			else
+				state = 52;
+			break;
+		}
+		case 52:
+		{
+			fwd--;
+			return normalReturn(TK_GT);
+		}
+		case 53:
+			return normalReturn(TK_GE);
+		case 54:
+		{
+			if (c != '\n')
+				state = 54;
+			else
+				state = 55;
+			break;
+		}
+		case 55:
+		{
+			fwd--;
+			char *lexeme = makeLexeme(begin, begin);
+			Token *token = makeToken(TK_COMMENT, lexeme, lines, 0, NULL);
+			tokenized();
+			return token;
+		}
+		case 56:
+		{
+			if (c >= 97 && c <= 122)
+				state = 57;
+			else
+				state = 64;
+			break;
+		}
+		case 57:
+		{
+			if (c >= 97 && c <= 122)
+				state = 57;
+			else
+				state = 58;
+			break;
+		}
+		case 58:
+		{
+			fwd--;
+			return normalReturn(TK_RUID); // not checking for existence in symbol table
+		}
+		case 59:
+		{
+			fwd--;
+			fwd--;
+			return normalReturn(TK_LT);
+		}
+		case 60:
+		{
+			fwd--;
+			fwd--;
+			fwd--;
+			return normalReturn(TK_LT);
+		}
+		case 61:
+		{
+			fwd--;
+			fwd--;
+			fwd--;
+			char *lexeme = makeLexeme(begin, fwd);
+			int num = 0, i = 0;
+			for (; lexeme[i] != '\0'; i++)
+			{
+				num = 10 * num + lexeme[i] - '0';
+			}
+			number *intPartOfNum = (number *)malloc(sizeof(number));
+			(*intPartOfNum).NUM = num;
+			Token *token = makeToken(TK_NUM, lexeme, lines, 1, intPartOfNum);
+			tokenized();
+			return token;
+		}
+		// case 62:
+		// {
+		// 	fwd--;
+		// 	fwd--;
+		// 	fwd--;
+		// 	fwd--;
+		// 	char *lexeme = makeLexeme(begin, fwd);
+		// 	int num = 0, i = 0;
+		// 	for (; lexeme[i] != '\0'; i++)
+		// 	{
+		// 		num = 10 * num + lexeme[i] - '0';
+		// 	}
+		// 	number *intPartOfNum = (number *)malloc(sizeof(number));
+		// 	(*intPartOfNum).NUM = num;
+		// 	Token *token = makeToken(TK_NUM, lexeme, lines, 1, intPartOfNum);
+		// 	tokenized();
+		// 	return token;
+		// }
+		case 63:
+		{
+			fwd--;
+			fwd--;
+			return normalReturn(TK_FIELDID);
+		}
+		case 64:
+		{
+			fwd--;
+			fwd--;
+			char *lexeme = makeLexeme(begin, fwd);
+			printf("Unrecognizable pattern %s at line %d\n", lexeme, lines);
+			fwd++;
+			begin = fwd;
+			fwd--;
+			state = 0;
+			break;
+		}
+		case 65:
+		{
+			fwd--;
+			char *lexeme = makeLexeme(begin, fwd);
+			fwd++;
+			begin = fwd;
+			fwd--;
+			state = 0;
+			break;
+		}
+		}
+	}
+}
+
+int main()
+{
+	FILE *fp1 = fopen("t1.txt", "r");
+	initializeLexer(fp1);
+	Token *t = getNextToken();
+	while (t != NULL)
+	{
+		printf("lexeme - %s  tokenNumber - %d  lineNumber - %d\n\n", t->lexeme, t->tokenName, t->lineNo);
+		t = getNextToken();
+	}
+	fclose(fp1);
+	return 0;
+}
