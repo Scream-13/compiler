@@ -1,4 +1,3 @@
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "lexer.h"
@@ -9,8 +8,9 @@ char *fwd = NULL;
 char *twinBuf[2];
 int currBuf = 1;
 int state = 0;
-int lines = 0;
+int lines = 1;
 int noInputLeft = 0;
+Token symTb[];
 FILE *fp;
 
 FILE *getStream()
@@ -41,7 +41,7 @@ void initializeLexer(FILE *f)
 	fp = f;
 	currBuf = 1;
 	state = 0;
-	lines = 0;
+	lines = 1;
 	noInputLeft = 0;
 	begin = NULL;
 	fwd = NULL;
@@ -68,8 +68,6 @@ char getChar()
 		getStream(fp);
 		fwd = twinBuf[currBuf];
 	}
-	else if (*fwd == EOF)
-		return EOF;
 	else
 		fwd++;
 	if (*fwd == '\n')
@@ -122,13 +120,27 @@ int compareString(char *c1, char *c2)
 	return 1;
 }
 
+void retract(int r)
+{
+	while (r--)
+	{
+		if (*fwd == '\n')
+			lines--;
+		fwd--;
+	}
+}
+
 Token *normalReturn(TokenName tokenName)
 {
-	fwd--;
+	retract(1);
 	char *lexeme = makeLexeme(begin, fwd);
 	Token *token = makeToken(tokenName, lexeme, lines, 0, NULL);
 	tokenized();
 	return token;
+}
+
+void initializeSymTb()
+{
 }
 
 Token *getNextToken()
@@ -199,7 +211,6 @@ Token *getNextToken()
 			}
 			else if (c == '\n')
 			{
-				lines--;
 				begin++;
 				state = 0;
 			}
@@ -244,7 +255,7 @@ Token *getNextToken()
 			return normalReturn(TK_ASSIGNOP);
 		case 5:
 		{
-			fwd--;
+			retract(1);
 			return normalReturn(TK_LT);
 		}
 		case 6:
@@ -261,8 +272,7 @@ Token *getNextToken()
 		}
 		case 8:
 		{
-			fwd--;
-			fwd--;
+			retract(2);
 			char *lexeme = makeLexeme(begin, fwd);
 			int num = 0, i = 0;
 			for (; lexeme[i] != '\0'; i++)
@@ -301,8 +311,7 @@ Token *getNextToken()
 		}
 		case 12:
 		{
-			fwd--;
-			fwd--;
+			retract(2);
 			char *lexeme = makeLexeme(begin, fwd);
 			float num = 0.0;
 			int i = 0;
@@ -348,7 +357,7 @@ Token *getNextToken()
 		case 16:
 		{
 			// tokenise RNUM with exponent part
-			fwd--;
+			retract(2);
 			char *lexeme = makeLexeme(begin, fwd);
 			float f;
 			sscanf(lexeme, "%f", &f);
@@ -387,8 +396,7 @@ Token *getNextToken()
 		}
 		case 21:
 		{
-			fwd--;
-			fwd--;
+			retract(2);
 			char *lexeme = makeLexeme(begin, fwd);
 			char tkmain[] = "_main";
 			Token *token = (Token *)malloc(sizeof(Token *));
@@ -429,8 +437,7 @@ Token *getNextToken()
 		}
 		case 25:
 		{
-			fwd--;
-			fwd--;
+			retract(2);
 			char *lexeme = makeLexeme(begin, fwd);
 			Token *token = makeToken(TK_ID, lexeme, lines, 0, NULL);
 			tokenized();
@@ -446,8 +453,8 @@ Token *getNextToken()
 		}
 		case 27:
 		{
-			fwd--;
-			return normalReturn(TK_FIELDID); // doubt - if entry already exists for this fieldID what to do ( currently returns new token)
+			retract(1);
+			return normalReturn(TK_FIELDID);
 		}
 		case 28:
 			return normalReturn(TK_SQL);
@@ -541,7 +548,7 @@ Token *getNextToken()
 		}
 		case 52:
 		{
-			fwd--;
+			retract(1);
 			return normalReturn(TK_GT);
 		}
 		case 53:
@@ -556,7 +563,7 @@ Token *getNextToken()
 		}
 		case 55:
 		{
-			fwd--;
+			retract(2);
 			char *lexeme = makeLexeme(begin, begin);
 			Token *token = makeToken(TK_COMMENT, lexeme, lines, 0, NULL);
 			tokenized();
@@ -580,27 +587,22 @@ Token *getNextToken()
 		}
 		case 58:
 		{
-			fwd--;
+			retract(1);
 			return normalReturn(TK_RUID); // not checking for existence in symbol table
 		}
 		case 59:
 		{
-			fwd--;
-			fwd--;
+			retract(2);
 			return normalReturn(TK_LT);
 		}
 		case 60:
 		{
-			fwd--;
-			fwd--;
-			fwd--;
+			retract(3);
 			return normalReturn(TK_LT);
 		}
 		case 61:
 		{
-			fwd--;
-			fwd--;
-			fwd--;
+			retract(3);
 			char *lexeme = makeLexeme(begin, fwd);
 			int num = 0, i = 0;
 			for (; lexeme[i] != '\0'; i++)
@@ -613,12 +615,16 @@ Token *getNextToken()
 			tokenized();
 			return token;
 		}
-		// case 62:
-		// {
-		// 	fwd--;
-		// 	fwd--;
-		// 	fwd--;
-		// 	fwd--;
+			// case 62:
+			// {
+			// 	fwd--;
+			// retract -= 1;
+			// 	fwd--;
+			// retract -= 1;
+			// 	fwd--;
+			// retract -= 1;
+			// 	fwd--;
+			// retract -= 1;
 		// 	char *lexeme = makeLexeme(begin, fwd);
 		// 	int num = 0, i = 0;
 		// 	for (; lexeme[i] != '\0'; i++)
@@ -633,14 +639,12 @@ Token *getNextToken()
 		// }
 		case 63:
 		{
-			fwd--;
-			fwd--;
+			retract(2);
 			return normalReturn(TK_FIELDID);
 		}
 		case 64:
 		{
-			fwd--;
-			fwd--;
+			retract(2);
 			char *lexeme = makeLexeme(begin, fwd);
 			printf("Unrecognizable pattern %s at line %d\n", lexeme, lines);
 			fwd++;
@@ -651,7 +655,7 @@ Token *getNextToken()
 		}
 		case 65:
 		{
-			fwd--;
+			retract(1);
 			char *lexeme = makeLexeme(begin, fwd);
 			fwd++;
 			begin = fwd;
