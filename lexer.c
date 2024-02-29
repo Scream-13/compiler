@@ -10,8 +10,8 @@ int currBuf = 1;
 int state = 0;
 int lines = 1;
 int noInputLeft = 0;
-Token symTb[];
 FILE *fp;
+symTb *tokenList;
 
 FILE *getStream()
 {
@@ -139,8 +139,48 @@ Token *normalReturn(TokenName tokenName)
 	return token;
 }
 
-void initializeSymTb()
+symTb *initializeSymTb()
 {
+	tokenList = (symTb *)malloc(sizeof(symTb));
+	if (tokenList != NULL)
+	{
+		tokenList->nTokens = 0;
+		tokenList->size = 0;
+		tokenList->block = 20;
+		tokenList->tokens = (Token **)malloc(sizeof(Token) * 20);
+		if (NULL == tokenList->tokens)
+		{
+			free(tokenList);
+			return NULL;
+		}
+	}
+	return tokenList;
+}
+
+void deleteSymTb()
+{
+	free(tokenList->tokens);
+	free(tokenList);
+}
+
+void addToSymTb(Token *tk)
+{
+	int nTokens = tokenList->nTokens;
+	if (nTokens >= tokenList->size)
+	{
+		int nSize = tokenList->size + tokenList->block;
+		Token **newSymTb = (Token **)realloc(tokenList->tokens, sizeof(Token **) * nSize);
+		if (newSymTb == NULL)
+			return;
+		else
+		{
+			tokenList->size = nSize;
+			tokenList->tokens = newSymTb;
+		}
+	}
+	tokenList->tokens[nTokens] = tk;
+	nTokens++;
+	tokenList->nTokens = nTokens;
 }
 
 Token *getNextToken()
@@ -214,7 +254,7 @@ Token *getNextToken()
 				begin++;
 				state = 0;
 			}
-			else if (c == EOF)
+			else if (c == 0 || c == EOF)
 			{
 				return NULL;
 			}
@@ -438,10 +478,19 @@ Token *getNextToken()
 		case 25:
 		{
 			retract(2);
-			char *lexeme = makeLexeme(begin, fwd);
-			Token *token = makeToken(TK_ID, lexeme, lines, 0, NULL);
-			tokenized();
-			return token;
+			int l = fwd - begin + 1;
+			if (l > 20)
+			{
+				state = 66;
+				break;
+			}
+			else
+			{
+				char *lexeme = makeLexeme(begin, fwd);
+				Token *token = makeToken(TK_ID, lexeme, lines, 0, NULL);
+				tokenized();
+				return token;
+			}
 		}
 		case 26:
 		{
@@ -663,6 +712,13 @@ Token *getNextToken()
 			state = 0;
 			break;
 		}
+		case 66:
+		{
+			printf("Error :Variable Identifier is longer than the prescribed length of 20 characters.\n");
+			tokenized();
+			state = 0;
+			break;
+		}
 		}
 	}
 }
@@ -671,11 +727,18 @@ int main()
 {
 	FILE *fp1 = fopen("t1.txt", "r");
 	initializeLexer(fp1);
+	initializeSymTb();
 	Token *t = getNextToken();
 	while (t != NULL)
 	{
-		printf("lexeme - %s  tokenNumber - %d  lineNumber - %d\n\n", t->lexeme, t->tokenName, t->lineNo);
+		// printf("lexeme - %s  tokenNumber - %d  lineNumber - %d\n\n", t->lexeme, t->tokenName, t->lineNo);
+		addToSymTb(t);
 		t = getNextToken();
+	}
+	for (int i = 0; i < tokenList->nTokens; i++)
+	{
+		t = tokenList->tokens[i];
+		printf("lexeme - %s  tokenNumber - %d  lineNumber - %d\n\n", t->lexeme, t->tokenName, t->lineNo);
 	}
 	fclose(fp1);
 	return 0;

@@ -77,4 +77,12 @@ typedef struct Token
     number *number;
 } Token;
 
+typedef struct symTb
+{
+    Token **tokens;
+    int nTokens;
+    int size;
+    int block;
+} symTb;
+
 #endif
