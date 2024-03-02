@@ -1,5 +1,7 @@
 #include <stdlib.h>
 #include<stdio.h>
+#include"parserDef.h"
+
 #define GramRules 87
 #define MaxLenRule 125
 
