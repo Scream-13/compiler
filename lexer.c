@@ -12,6 +12,65 @@ int lines = 1;
 int noInputLeft = 0;
 FILE *fp;
 symTb *tokenList;
+keywordToTk getTkName[27];
+
+void initGetTkName()
+{
+	getTkName[0].keyword = "with";
+	getTkName[0].tk = TK_WITH;
+	getTkName[1].keyword = "parameters";
+	getTkName[1].tk = TK_PARAMETERS;
+	getTkName[2].keyword = "end";
+	getTkName[2].tk = TK_END;
+	getTkName[3].keyword = "while";
+	getTkName[3].tk = TK_WHILE;
+	getTkName[4].keyword = "union";
+	getTkName[4].tk = TK_UNION;
+	getTkName[5].keyword = "endunion";
+	getTkName[5].tk = TK_ENDUNION;
+	getTkName[6].keyword = "definetype";
+	getTkName[6].tk = TK_DEFINETYPE;
+	getTkName[7].keyword = "as";
+	getTkName[7].tk = TK_AS;
+	getTkName[8].keyword = "type";
+	getTkName[8].tk = TK_TYPE;
+	getTkName[9].keyword = "global";
+	getTkName[9].tk = TK_GLOBAL;
+	getTkName[10].keyword = "parameter";
+	getTkName[10].tk = TK_PARAMETER;
+	getTkName[11].keyword = "list";
+	getTkName[11].tk = TK_LIST;
+	getTkName[12].keyword = "input";
+	getTkName[12].tk = TK_INPUT;
+	getTkName[13].keyword = "output";
+	getTkName[13].tk = TK_OUTPUT;
+	getTkName[14].keyword = "int";
+	getTkName[14].tk = TK_INT;
+	getTkName[15].keyword = "real";
+	getTkName[15].tk = TK_REAL;
+	getTkName[16].keyword = "endwhile";
+	getTkName[16].tk = TK_ENDWHILE;
+	getTkName[17].keyword = "if";
+	getTkName[17].tk = TK_IF;
+	getTkName[18].keyword = "then";
+	getTkName[18].tk = TK_THEN;
+	getTkName[19].keyword = "endif";
+	getTkName[19].tk = TK_ENDIF;
+	getTkName[20].keyword = "read";
+	getTkName[20].tk = TK_READ;
+	getTkName[21].keyword = "write";
+	getTkName[21].tk = TK_WRITE;
+	getTkName[22].keyword = "return";
+	getTkName[22].tk = TK_RETURN;
+	getTkName[23].keyword = "call";
+	getTkName[23].tk = TK_CALL;
+	getTkName[24].keyword = "record";
+	getTkName[24].tk = TK_RECORD;
+	getTkName[25].keyword = "endrecord";
+	getTkName[25].tk = TK_ENDRECORD;
+	getTkName[26].keyword = "else";
+	getTkName[26].tk = TK_ELSE;
+}
 
 FILE *getStream()
 {
@@ -144,10 +203,9 @@ symTb *initializeSymTb()
 	tokenList = (symTb *)malloc(sizeof(symTb));
 	if (tokenList != NULL)
 	{
-		tokenList->nTokens = 0;
-		tokenList->size = 0;
-		tokenList->block = 20;
-		tokenList->tokens = (Token **)malloc(sizeof(Token) * 20);
+		tokenList->count = 0;
+		tokenList->size = 50;
+		tokenList->tokens = (Token **)malloc(sizeof(Token) * 50);
 		if (NULL == tokenList->tokens)
 		{
 			free(tokenList);
@@ -165,22 +223,22 @@ void deleteSymTb()
 
 void addToSymTb(Token *tk)
 {
-	int nTokens = tokenList->nTokens;
-	if (nTokens >= tokenList->size)
+	int count = tokenList->count;
+	int size = tokenList->size;
+	if (count >= size)
 	{
-		int nSize = tokenList->size + tokenList->block;
-		Token **newSymTb = (Token **)realloc(tokenList->tokens, sizeof(Token **) * nSize);
-		if (newSymTb == NULL)
+		size = size + 50;
+		tokenList->tokens = (Token **)realloc(tokenList->tokens, sizeof(Token **) * size);
+		if (tokenList->tokens == NULL)
 			return;
 		else
 		{
-			tokenList->size = nSize;
-			tokenList->tokens = newSymTb;
+			tokenList->size = size;
 		}
 	}
-	tokenList->tokens[nTokens] = tk;
-	nTokens++;
-	tokenList->nTokens = nTokens;
+	tokenList->tokens[count] = tk;
+	count++;
+	tokenList->count = count;
 }
 
 Token *getNextToken()
@@ -503,7 +561,20 @@ Token *getNextToken()
 		case 27:
 		{
 			retract(1);
-			return normalReturn(TK_FIELDID);
+			retract(1);
+			char *lexeme = makeLexeme(begin, fwd);
+			for (int i = 0; i < 27; i++)
+			{
+				if (compareString(getTkName[i].keyword, lexeme) == 1)
+				{
+					Token *token = makeToken(getTkName[i].tk, lexeme, lines, 0, NULL);
+					tokenized();
+					return token;
+				}
+			}
+			Token *token = makeToken(TK_FIELDID, lexeme, lines, 0, NULL);
+			tokenized();
+			return token;
 		}
 		case 28:
 			return normalReturn(TK_SQL);
@@ -728,6 +799,7 @@ int main()
 	FILE *fp1 = fopen("t1.txt", "r");
 	initializeLexer(fp1);
 	initializeSymTb();
+	initGetTkName();
 	Token *t = getNextToken();
 	while (t != NULL)
 	{
@@ -735,10 +807,10 @@ int main()
 		addToSymTb(t);
 		t = getNextToken();
 	}
-	for (int i = 0; i < tokenList->nTokens; i++)
+	for (int i = 0; i < tokenList->count; i++)
 	{
 		t = tokenList->tokens[i];
-		printf("lexeme - %s  tokenNumber - %d  lineNumber - %d\n\n", t->lexeme, t->tokenName, t->lineNo);
+		printf("lexeme - %s  token - %s  lineNumber - %d\n\n", t->lexeme, Terminal_tokens[t->tokenName], t->lineNo);
 	}
 	fclose(fp1);
 	return 0;
