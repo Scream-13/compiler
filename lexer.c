@@ -72,15 +72,15 @@ void initGetTkName()
 	getTkName[26].tk = TK_ELSE;
 }
 
-FILE *getStream()
+FILE *getStream(FILE *f1)
 {
 	if (noInputLeft != 0)
 		return NULL;
 	currBuf = 1 - currBuf;
 	memset(twinBuf[currBuf], EOF, bufsize);
 	int count;
-	if (!feof(fp))
-		count = fread(twinBuf[currBuf], 1, bufsize, fp);
+	if (!feof(f1))
+		count = fread(twinBuf[currBuf], 1, bufsize, f1);
 
 	if (count < bufsize)
 	{
@@ -92,7 +92,7 @@ FILE *getStream()
 		printf("Error in reading");
 		return NULL;
 	}
-	return fp;
+	return f1;
 }
 
 symTb *initializeSymTb()
@@ -112,27 +112,32 @@ symTb *initializeSymTb()
 	return tokenList;
 }
 
-void initializeLexer(FILE *f)
+void initBuf()
 {
-	fp = f;
 	currBuf = 1;
-	state = 0;
-	lines = 1;
-	noInputLeft = 0;
 	begin = NULL;
 	fwd = NULL;
 	twinBuf[0] = (char *)malloc(bufsize * sizeof(char));
 	twinBuf[1] = (char *)malloc(bufsize * sizeof(char));
+}
+
+void initializeLexer(FILE *f)
+{
+	fp = f;
+	state = 0;
+	lines = 1;
+	noInputLeft = 0;
+	initBuf();
 	initializeSymTb();
 	initGetTkName();
 	return;
 }
 
-char getChar()
+char getChar(FILE *f1)
 {
 	if (begin == NULL && fwd == NULL)
 	{
-		getStream();
+		getStream(f1);
 		begin = twinBuf[currBuf];
 		fwd = twinBuf[currBuf];
 		char res = *fwd;
@@ -143,7 +148,7 @@ char getChar()
 	}
 	else if (fwd - begin == bufsize - 1)
 	{
-		getStream(fp);
+		getStream(f1);
 		fwd = twinBuf[currBuf];
 	}
 	else
@@ -249,7 +254,7 @@ Token *getNextToken()
 	char c = 10;
 	while (1)
 	{
-		char c = getChar();
+		char c = getChar(fp);
 		switch (state)
 		{
 		case 0:
@@ -820,6 +825,53 @@ Token *getNextToken()
 	}
 }
 
+void removeComments(char *tc, char *clean)
+{
+	FILE *f1 = fopen(tc, "r");
+	FILE *f2 = fopen(clean, "a");
+	initializeLexer(f1);
+	char c = 10;
+	int st = 0;
+	while (1)
+	{
+		c = getChar(f1);
+		if (c == EOF || c == 0)
+			break;
+		switch (st)
+		{
+		case 0:
+		{
+			if (c == '%')
+			{
+				st = 1;
+			}
+			else
+			{
+				fprintf(f2, "%c", c);
+				printf("%c", c);
+				st = 0;
+			}
+			break;
+		}
+		case 1:
+		{
+			if (c != '\n')
+			{
+				break;
+			}
+			else
+			{
+				fprintf(f2, "%c", c);
+				printf("%c", c);
+				st = 0;
+			}
+		}
+		}
+	}
+	fclose(f1);
+	fclose(f2);
+}
+
 int main()
 {
 	FILE *fp1 = fopen("t2.txt", "r");
@@ -836,6 +888,9 @@ int main()
 	// 	t = tokenList->tokens[i];
 	// 	printf("Line No. %d Lexeme %s      Token %s\n", t->lineNo, t->lexeme, Terminal_tokens[t->tokenName]);
 	// }
+	char f1[] = "t2.txt";
+	char f2[] = "removeCommentsFromT2.txt";
+	//removeComments(f1, f2);
 	fclose(fp1);
 	return 0;
 }
