@@ -95,6 +95,23 @@ FILE *getStream()
 	return fp;
 }
 
+symTb *initializeSymTb()
+{
+	tokenList = (symTb *)malloc(sizeof(symTb));
+	if (tokenList != NULL)
+	{
+		tokenList->count = 0;
+		tokenList->size = 50;
+		tokenList->tokens = (Token **)malloc(sizeof(Token) * 50);
+		if (NULL == tokenList->tokens)
+		{
+			free(tokenList);
+			return NULL;
+		}
+	}
+	return tokenList;
+}
+
 void initializeLexer(FILE *f)
 {
 	fp = f;
@@ -106,6 +123,8 @@ void initializeLexer(FILE *f)
 	fwd = NULL;
 	twinBuf[0] = (char *)malloc(bufsize * sizeof(char));
 	twinBuf[1] = (char *)malloc(bufsize * sizeof(char));
+	initializeSymTb();
+	initGetTkName();
 	return;
 }
 
@@ -196,23 +215,6 @@ Token *normalReturn(TokenName tokenName)
 	Token *token = makeToken(tokenName, lexeme, lines, 0, NULL);
 	tokenized();
 	return token;
-}
-
-symTb *initializeSymTb()
-{
-	tokenList = (symTb *)malloc(sizeof(symTb));
-	if (tokenList != NULL)
-	{
-		tokenList->count = 0;
-		tokenList->size = 50;
-		tokenList->tokens = (Token **)malloc(sizeof(Token) * 50);
-		if (NULL == tokenList->tokens)
-		{
-			free(tokenList);
-			return NULL;
-		}
-	}
-	return tokenList;
 }
 
 void deleteSymTb()
@@ -421,7 +423,7 @@ Token *getNextToken()
 			num = lexeme[i] / 10 + lexeme[i + 1] / 100;
 			number *floatPartOfNum = (number *)malloc(sizeof(number));
 			(*floatPartOfNum).RNUM = num;
-			Token *token = makeToken(TK_NUM, lexeme, lines, 1, floatPartOfNum);
+			Token *token = makeToken(TK_RNUM, lexeme, lines, 1, floatPartOfNum);
 			tokenized();
 			return token;
 		}
@@ -455,13 +457,37 @@ Token *getNextToken()
 		case 16:
 		{
 			// tokenise RNUM with exponent part
-			retract(2);
+			retract(1);
 			char *lexeme = makeLexeme(begin, fwd);
-			float f;
-			sscanf(lexeme, "%f", &f);
+			float num = 0.0;
+			int i = 0;
+			for (; lexeme[i] != '.'; i++)
+			{
+				num = 10 * num + lexeme[i] - '0';
+			}
+			i++;
+			num = lexeme[i] / 10 + lexeme[i + 1] / 100;
+			i += 3;
+			int neg = 0;
+			if (lexeme[i] == '-')
+			{
+				neg = 1;
+				i++;
+			}
+			else if (lexeme[i] == '+')
+				i++;
+			int fac = 10, pow = 0;
+			if (neg == 1)
+				fac = 0.1;
+			pow += lexeme[i] - '0';
+			pow = 10 * pow + (lexeme[i + 1] - '0');
+			for (int d = pow; d >= 0; d--)
+			{
+				num = num * fac;
+			}
 			number *floatPartOfNum = (number *)malloc(sizeof(number));
-			(*floatPartOfNum).RNUM = f;
-			Token *token = makeToken(TK_NUM, lexeme, lines, 1, floatPartOfNum);
+			floatPartOfNum->RNUM = num;
+			Token *token = makeToken(TK_RNUM, lexeme, lines, 1, floatPartOfNum);
 			tokenized();
 			return token;
 			break;
@@ -796,22 +822,20 @@ Token *getNextToken()
 
 int main()
 {
-	FILE *fp1 = fopen("t1.txt", "r");
+	FILE *fp1 = fopen("t2.txt", "r");
 	initializeLexer(fp1);
-	initializeSymTb();
-	initGetTkName();
 	Token *t = getNextToken();
 	while (t != NULL)
 	{
-		// printf("lexeme - %s  tokenNumber - %d  lineNumber - %d\n\n", t->lexeme, t->tokenName, t->lineNo);
+		printf("Line No. %d Lexeme %s      Token %s\n", t->lineNo, t->lexeme, Terminal_tokens[t->tokenName]);
 		addToSymTb(t);
 		t = getNextToken();
 	}
-	for (int i = 0; i < tokenList->count; i++)
-	{
-		t = tokenList->tokens[i];
-		printf("lexeme - %s  token - %s  lineNumber - %d\n\n", t->lexeme, Terminal_tokens[t->tokenName], t->lineNo);
-	}
+	// for (int i = 0; i < tokenList->count; i++)
+	// {
+	// 	t = tokenList->tokens[i];
+	// 	printf("Line No. %d Lexeme %s      Token %s\n", t->lineNo, t->lexeme, Terminal_tokens[t->tokenName]);
+	// }
 	fclose(fp1);
 	return 0;
 }
