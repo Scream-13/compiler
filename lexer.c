@@ -114,22 +114,16 @@ symTb *initializeSymTb()
 	return tokenList;
 }
 
-void initBuf()
-{
-	currBuf = 1;
-	begin = NULL;
-	fwd = NULL;
-	twinBuf[0] = (char *)malloc(bufsize * sizeof(char));
-	twinBuf[1] = (char *)malloc(bufsize * sizeof(char));
-}
-
 void initializeLexer(FILE *f)
 {
 	fp = f;
 	state = 0;
 	lines = 1;
-	noInputLeft = 0;
-	initBuf();
+	noInputLeft = 0;currBuf = 1;
+	begin = NULL;
+	fwd = NULL;
+	twinBuf[0] = (char *)malloc(bufsize * sizeof(char));
+	twinBuf[1] = (char *)malloc(bufsize * sizeof(char));
 	initializeSymTb();
 	initGetTkName();
 	return;
