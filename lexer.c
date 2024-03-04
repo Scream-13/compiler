@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include<string.h>
 #include "lexer.h"
 
 int bufsize = 1000;
@@ -146,7 +147,7 @@ char getChar(FILE *f1)
 		fwd++;
 		return res;
 	}
-	else if (fwd - begin == bufsize - 1)
+	else if (fwd == twinBuf[currBuf] + bufsize - 1)
 	{
 		getStream(f1);
 		fwd = twinBuf[currBuf];
@@ -874,7 +875,7 @@ void removeComments(char *tc, char *clean)
 
 int main()
 {
-	FILE *fp1 = fopen("t2.txt", "r");
+	FILE *fp1 = fopen("t5.txt", "r");
 	initializeLexer(fp1);
 	Token *t = getNextToken();
 	while (t != NULL)
@@ -888,9 +889,9 @@ int main()
 	// 	t = tokenList->tokens[i];
 	// 	printf("Line No. %d Lexeme %s      Token %s\n", t->lineNo, t->lexeme, Terminal_tokens[t->tokenName]);
 	// }
-	char f1[] = "t2.txt";
-	char f2[] = "removeCommentsFromT2.txt";
-	//removeComments(f1, f2);
+	// char f1[] = "t2.txt";
+	// char f2[] = "removeCommentsFromT2.txt";
+	// removeComments(f1, f2);
 	fclose(fp1);
 	return 0;
 }
