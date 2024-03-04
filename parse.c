@@ -120,7 +120,7 @@ int IsNonTerminal(char *str)
 
 element ElemsForHT(char *str)
 {
-    element entry = (element )malloc(sizeof(struct hash));
+    element entry = (element)malloc(sizeof(struct hash));
     entry->first = NULL;
     entry->follow = NULL;
     entry->value = (char *)malloc(sizeof(char) * 100); // tree branch selection
@@ -181,7 +181,7 @@ node *readGrammar(hashtable ht)
     node *gramRules = (node *)malloc(sizeof(node) * NOF_RULES);
 
     // reading the file storing gram rules
-    FILE *fp = fopen("grammar.txt", "r");
+    FILE *fp = fopen("/Users/pragyansingh/Desktop/grammar.txt", "r");
     if (fp == NULL)
     {
         printf("FILE ERROR\n");
@@ -229,10 +229,10 @@ node *readGrammar(hashtable ht)
             else
                 temp->flag = -1;
 
-            struct hash *h = searchTable(ht, token);
+            element h = searchTable(ht, token);
             if (h == NULL)
             {
-                h = createHashTable(token);
+                h = ElemsForHT(token);
                 insertToHashTable(h, ht);
             }
 
@@ -325,12 +325,34 @@ void follow(hashtable ht, char *followfile)
     rewind(fpfollow);
     fclose(fpfollow);
 }
+void printrule(node ls){
+
+	node temp=ls;
+	while(temp!=NULL){
+		printf("%s %d\t",temp->string, temp->flag );
+		
+		temp=temp->next;
+	}
+	printf("\n");
+
+return ;
+
+
+}
+
+void printRuleNo(struct hash h){
+	for(int i=0;i<h.rulenum;i++){
+		printf("%d \n", h.rule[i]);
+	}
+}
 
 int main()
 {
     hashtable rules;
     rules = createHashTable();
     node *reading = readGrammar(rules);
-
+    first(rules,"/Users/pragyansingh/Downloads/first.txt");
+    follow(rules,"/Users/pragyansingh/Downloads/Follow_set.txt");
+    printRuleNo(*rules[2]);
     return 0;
 }
