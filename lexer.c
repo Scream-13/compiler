@@ -11,6 +11,7 @@ int currBuf = 1;
 int state = 0;
 int lines = 1;
 int noInputLeft = 0;
+int flag = 0;
 FILE *fp;
 symTb *tokenList;
 keywordToTk getTkName[27];
@@ -150,6 +151,7 @@ char getChar(FILE *f1)
 	else if (fwd == twinBuf[currBuf] + bufsize - 1)
 	{
 		getStream(f1);
+		flag = 1;
 		fwd = twinBuf[currBuf];
 	}
 	else
@@ -170,11 +172,29 @@ char *makeLexeme(char *first, char *last)
 {
 	char *lexeme = (char *)malloc((last - first + 2) * sizeof(char));
 	char *curr = first;
-	int i;
-	for (i = 0; curr <= last; i++)
+	int c = 1 - currBuf;
+	int i = 0;
+	if (flag == 1 && first < twinBuf[c] + bufsize)
 	{
-		lexeme[i] = *curr;
-		curr++;
+		flag = 0;
+		for (; curr < twinBuf[c] + bufsize; i++)
+		{
+			lexeme[i] = *curr;
+			curr++;
+		}
+		for (curr = twinBuf[currBuf]; curr <= last; i++)
+		{
+			lexeme[i] = *curr;
+			curr++;
+		}
+	}
+	else
+	{
+		for (i = 0; curr <= last; i++)
+		{
+			lexeme[i] = *curr;
+			curr++;
+		}
 	}
 	lexeme[i] = '\0';
 	return lexeme;

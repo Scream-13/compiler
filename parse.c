@@ -181,7 +181,7 @@ node *readGrammar(hashtable ht)
     node *gramRules = (node *)malloc(sizeof(node) * NOF_RULES);
 
     // reading the file storing gram rules
-    FILE *fp = fopen("/Users/pragyansingh/Desktop/grammar.txt", "r");
+    FILE *fp = fopen("grammar.txt", "r");
     if (fp == NULL)
     {
         printf("FILE ERROR\n");
