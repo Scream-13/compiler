@@ -1,4 +1,4 @@
-#include "parserDef.h"
+#include "parser.h"
 
 int IsTerminal(char *str)
 {
