@@ -1,24 +1,24 @@
 #ifndef PARSERDEF_
 #define PARSERDEF_
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "lexer.h"
 
 #define TOTAL_GRAMMAR_NONTERMINALS 49
 #define TOTAL_GRAMMAR_TERMINALS 58
+#define rows 49
+#define cols 58
 #define NOF_RULES 87
 #define HASH_SIZE 1000
+#define MAX_RULES 100
+#define MAX_SYMBOLS 50
 
 typedef struct TreeNode *treeNode;
-typedef Element *hashtable;
+typedef struct hash **hashtable;
 typedef int **parseTable;
 typedef struct Stack *stack;
 typedef struct Node *node;
 
-int stack_max = 10000;
-int parserError = 0;
+extern int stack_max;
+extern int parserError;
 char *Terminal_tokens[] = {
     "TK_ASSIGNOP",
     "TK_COMMENT",
@@ -78,8 +78,10 @@ char *Terminal_tokens[] = {
     "TK_GE",
     "TK_NE",
     "eps"};
-char *Non_Terminal_tokens[] = {"inputparameters", "typedefinitions",
-                               "iterativestmt", "singleorrecid", "lowprecedenceoperators", "stmts",
+char *Non_Terminal_tokens[] = {"inputparameters",
+                               "typedefinitions",
+                               "iterativestmt",
+                               "singleorrecid", "lowprecedenceoperators", "stmts",
                                "factor", "optionalreturn", "operator", "declaration", "fielddefinition",
                                "highprecedenceoperators", "constructeddatatype", "termprime", "program",
                                "global_or_not", "input_par", "term", "outputparameters", "A", "expprime",
@@ -124,6 +126,16 @@ struct Stack
     int *arr;
     int top;
 };
+
+typedef struct
+{
+    char nonTerminal[20];
+    char production[MAX_SYMBOLS][10];
+    int prodCount;
+} GrammarRule;
+
+GrammarRule grammarRules[MAX_RULES];
+int grammarRuleCount = 0;
 
 char *CI[] = {
     "TK_ASSIGNOP",

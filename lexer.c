@@ -1,9 +1,5 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "lexer.h"
-
-int bufsize = 1000;
+int bufsize = 4096;
 char *begin = NULL;
 char *fwd = NULL;
 char *twinBuf[2];
@@ -13,8 +9,67 @@ int lines = 1;
 int noInputLeft = 0;
 int flag = 0;
 FILE *fp;
-symTb *tokenList;
-keywordToTk getTkName[27];
+
+ symTb *tokenList;
+ keywordToTk getTkName[27];
+char *Terminal_tk[] = {
+	"TK_ASSIGNOP",
+	"TK_COMMENT",
+	"TK_FIELDID",
+	"TK_ID",
+	"TK_NUM",
+	"TK_RNUM",
+	"TK_FUNID",
+	"TK_RUID",
+	"TK_WITH",
+	"TK_PARAMETERS",
+	"TK_END",
+	"TK_WHILE",
+	"TK_UNION",
+	"TK_ENDUNION",
+	"TK_DEFINETYPE",
+	"TK_AS",
+	"TK_TYPE",
+	"TK_MAIN",
+	"TK_GLOBAL",
+	"TK_PARAMETER",
+	"TK_LIST",
+	"TK_SQL",
+	"TK_SQR",
+	"TK_INPUT",
+	"TK_OUTPUT",
+	"TK_INT",
+	"TK_REAL",
+	"TK_COMMA",
+	"TK_SEM",
+	"TK_COLON",
+	"TK_DOT",
+	"TK_ENDWHILE",
+	"TK_OP",
+	"TK_CL",
+	"TK_IF",
+	"TK_THEN",
+	"TK_ENDIF",
+	"TK_READ",
+	"TK_WRITE",
+	"TK_RETURN",
+	"TK_PLUS",
+	"TK_MINUS",
+	"TK_MUL",
+	"TK_DIV",
+	"TK_CALL",
+	"TK_RECORD",
+	"TK_ENDRECORD",
+	"TK_ELSE",
+	"TK_AND",
+	"TK_OR",
+	"TK_NOT",
+	"TK_LT",
+	"TK_LE",
+	"TK_EQ",
+	"TK_GT",
+	"TK_GE",
+	"TK_NE"};
 
 void initGetTkName()
 {
@@ -76,6 +131,8 @@ void initGetTkName()
 
 FILE *getStream(FILE *f1)
 {
+	FILE *fp = fopen("t2.txt", "r");
+	initializeLexer(fp);
 	if (noInputLeft != 0)
 		return NULL;
 	currBuf = 1 - currBuf;
@@ -119,7 +176,8 @@ void initializeLexer(FILE *f)
 	fp = f;
 	state = 0;
 	lines = 1;
-	noInputLeft = 0;currBuf = 1;
+	noInputLeft = 0;
+	currBuf = 1;
 	begin = NULL;
 	fwd = NULL;
 	twinBuf[0] = (char *)malloc(bufsize * sizeof(char));
@@ -887,25 +945,25 @@ void removeComments(char *tc, char *clean)
 	fclose(f2);
 }
 
-int main()
-{
-	FILE *fp1 = fopen("t5.txt", "r");
-	initializeLexer(fp1);
-	Token *t = getNextToken();
-	while (t != NULL)
-	{
-		printf("Line No. %d Lexeme %s      Token %s\n", t->lineNo, t->lexeme, Terminal_tokens[t->tokenName]);
-		addToSymTb(t);
-		t = getNextToken();
-	}
-	// for (int i = 0; i < tokenList->count; i++)
-	// {
-	// 	t = tokenList->tokens[i];
-	// 	printf("Line No. %d Lexeme %s      Token %s\n", t->lineNo, t->lexeme, Terminal_tokens[t->tokenName]);
-	// }
-	// char f1[] = "t2.txt";
-	// char f2[] = "removeCommentsFromT2.txt";
-	// removeComments(f1, f2);
-	fclose(fp1);
-	return 0;
-}
+// int main()
+// {
+// 	FILE *fp1 = fopen("t5.txt", "r");
+// 	initializeLexer(fp1);
+// 	Token *t = getNextToken();
+// 	while (t != NULL)
+// 	{
+// 		printf("Line No. %d Lexeme %s      Token %s\n", t->lineNo, t->lexeme, Terminal_tk[t->tokenName]);
+// 		addToSymTb(t);
+// 		t = getNextToken();
+// 	}
+// 	// for (int i = 0; i < tokenList->count; i++)
+// 	// {
+// 	// 	t = tokenList->tokens[i];
+// 	// 	printf("Line No. %d Lexeme %s      Token %s\n", t->lineNo, t->lexeme, Terminal_tokens[t->tokenName]);
+// 	// }
+// 	// char f1[] = "t2.txt";
+// 	// char f2[] = "removeCommentsFromT2.txt";
+// 	// removeComments(f1, f2);
+// 	fclose(fp1);
+// 	return 0;
+// }

@@ -1,8 +1,9 @@
+
+#include "lexerDef.h"
 #ifndef LEX_
 #define LEX_
 
-#include "lexerDef.h"
-
+Token *getNextToken();
 void initGetTkName();
 FILE *getStream(FILE *f1);
 symTb *initializeSymTb();
@@ -16,7 +17,6 @@ void retract(int r);
 Token *normalReturn(TokenName tokenName);
 void deleteSymTb();
 void addToSymTb(Token *tk);
-Token *getNextToken();
 void removeComments(char *tc, char *clean);
 
 #endif
