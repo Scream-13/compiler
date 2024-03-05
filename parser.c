@@ -1,12 +1,5 @@
 #include "parserDef.h"
 
-hashtable createHashTable()
-{
-    hashtable ht = (hashtable)malloc(sizeof(hashtable) * 501);
-    if (ht == NULL)
-        printf("Memory Error!\n");
-    return ht;
-}
 int IsTerminal(char *str)
 {
     for (int i = 0; i < TOTAL_GRAMMAR_TERMINALS; i++)
@@ -26,231 +19,245 @@ int IsNonTerminal(char *str)
     return 0;
 }
 
-element ElemsForHT(char *str)
+Hashtable createHashTable()
 {
-    element entry = (element)malloc(sizeof(struct hash));
-    entry->first = (node)malloc(sizeof(node));
-    entry->follow = (node)malloc(sizeof(node));
-    entry->value = (char *)malloc(sizeof(char) * 100); // tree branch selection
-    entry->rulenum = 0;
-    entry->flag = 0;
-    if (strcmp(str, "eps") == 0)
+    Hashtable ht = (Hashtable)malloc(HASH_SIZE * sizeof(Element));
+    for (int i = 0; i < HASH_SIZE; i++)
     {
-        entry->flag = 0;
+        ht[i] = NULL;
     }
-    else if (IsTerminal(str))
-    {
-        entry->flag = 1;
-    }
-    else if (IsNonTerminal(str))
-    {
-        entry->flag = -1;
-    }
-    return entry;
+    return ht;
 }
-// calculating hashcode
+
 int hashcode(char *str)
 {
-    const int p = 17;
-    const int hash_size = 500;
-    int val = 0;
-    int power = p;
-    for (int i = 0; i < strlen(str); i++)
+    unsigned long hash = 5381;
+    int c;
+    while ((c = *str++))
     {
-        val += (str[i] * power) % hash_size;
-        power *= p;
+        hash = ((hash << 5) + hash) + c;
     }
-    return hash_size;
+    return hash % HASH_SIZE;
 }
-// check if the element is already in the table
-element searchTable(hashtable h, char *str)
+
+Element createElement(char *str)
 {
-    int hcd = hashcode(str);
-    if (h[hcd] == NULL)
-        return NULL;
+    Element newElement = (Element)malloc(sizeof(Hash));
+    newElement->value = strdup(str);
+    newElement->first = NULL;
+    newElement->follow = NULL;
+    newElement->rule = NULL;
+    newElement->rulenum = 0;
+    newElement->flag = IsTerminal(str) ? 1 : IsNonTerminal(str) ? -1
+                                                                : 0;
+    newElement->next = NULL;
+    return newElement;
+}
+
+void insertToHashTable(Hashtable ht, char *str)
+{
+    int index = hashcode(str);
+    Element e = createElement(str);
+    if (!ht[index])
+    {
+        ht[index] = e;
+    }
     else
-        return h[hcd];
-}
-// inserting to the table
-void insertToHashTable(element x, hashtable h)
-{
-    if (searchTable(h, x->value) != NULL)
     {
-        printf("collision \n");
-    }
-    int value = hashcode(x->value);
-    h[value] = x;
-}
-
-// reading grammar
-node *readGrammar(hashtable ht)
-{
-    node *gramRules = (node *)malloc(sizeof(node) * NOF_RULES);
-    // reading the file storing gram rules
-    FILE *fp = fopen("grammar.txt", "r");
-    if (fp == NULL)
-    {
-        printf("FILE ERROR\n");
-        exit(1);
-    }
-
-    char *token; // tokens of gram rules
-    char gramLine[400];
-    char delims[] = " \t\r\n\v\f";
-    int i = 0;
-    while (fgets(gramLine, 400, fp) != NULL)
-    {
-        token = strtok(gramLine, delims); // first element of the rule
-        node temp = (node)malloc(sizeof(node));
-        temp->string = (char *)malloc(sizeof(char) * strlen(token));
-        strcpy(temp->string, token);
-        temp->flag = -1; // as first token of any rule will be a nonterminal
-
-        // pushing it to hashtable
-        element h = searchTable(ht, token);
-        if (h == NULL)
+        Element temp = ht[index];
+        while (temp->next)
         {
-            h = ElemsForHT(token);
-            insertToHashTable(h, ht);
+            temp = temp->next;
         }
-        h->rule[h->rulenum] = i;
-        h->rulenum++;
-        token = strtok(NULL, delims);
-        while (token != NULL)
+        temp->next = e;
+    }
+}
+
+Element searchTable(Hashtable ht, char *str)
+{
+    int index = hashcode(str);
+    Element e = ht[index];
+    while (e && strcmp(e->value, str) != 0)
+    {
+        e = e->next;
+    }
+    return e;
+}
+
+void addFirstFollow(Node **list, char *str, int flag)
+{
+    Node *newNode = (Node *)malloc(sizeof(Node));
+    newNode->string = strdup(str);
+    newNode->flag = flag;
+    newNode->next = NULL;
+    if (*list == NULL)
+    {
+        *list = newNode;
+    }
+    else
+    {
+        Node *temp = *list;
+        while (temp->next != NULL)
         {
-            temp->next = (node)malloc(sizeof(struct Node));
-            temp = (temp->next);
-            temp->string = (char *)malloc(50 * sizeof(char));
-            strcpy(temp->string, token);
-            if (IsTerminal(token))
+            temp = temp->next;
+        }
+        temp->next = newNode;
+    }
+}
+
+// Define readGrammar, readFirsts, readFollows, and printHashTable similar to previous descriptions
+
+void freeHashTable(Hashtable ht)
+{
+    for (int i = 0; i < HASH_SIZE; i++)
+    {
+        Element e = ht[i];
+        while (e)
+        {
+            Element toDelete = e;
+            e = e->next;
+            free(toDelete->value);
+            Node *n = toDelete->first;
+            while (n)
             {
-                temp->flag = 1;
+                Node *toDeleteN = n;
+                n = n->next;
+                free(toDeleteN->string);
+                free(toDeleteN);
             }
-            else if (strcmp(token, "eps") == 0)
+            n = toDelete->follow;
+            while (n)
             {
-                temp->flag = 0;
+                Node *toDeleteN = n;
+                n = n->next;
+                free(toDeleteN->string);
+                free(toDeleteN);
+            }
+            free(toDelete);
+        }
+    }
+    free(ht);
+}
+void readGrammar(Hashtable ht, const char *filename)
+{
+    FILE *fp = fopen(filename, "r");
+    char line[1024];
+    while (fgets(line, sizeof(line), fp))
+    {
+        char *token = strtok(line, " \n");
+        char *lhs = token; // Left-hand side of the grammar rule
+        if (!searchTable(ht, lhs))
+        {
+            insertToHashTable(ht, lhs);
+        }
+        Element e = searchTable(ht, lhs);
+        while ((token = strtok(NULL, " \n")))
+        {
+            addFirstFollow(&(e->first), token, IsTerminal(token) ? 1 : -1);
+        }
+    }
+    fclose(fp);
+}
+void freeNodeList(Node *head)
+{
+    while (head != NULL)
+    {
+        Node *temp = head;
+        head = head->next;
+        free(temp->string); // Free the string
+        free(temp);         // Then free the node
+    }
+}
+void readFirsts(Hashtable ht, const char *filename)
+{
+    FILE *fp = fopen(filename, "r");
+    if (!fp)
+    {
+        printf("Unable to open the first set file.\n");
+        return;
+    }
+
+    char line[1024];
+    while (fgets(line, sizeof(line), fp))
+    {
+        // Tokenize the first non-terminal
+        char *token = strtok(line, " \t\r\n");
+        if (!token)
+            continue;
+
+        Element e = searchTable(ht, token);
+        if (!e)
+        { // If not found, create a new element
+            insertToHashTable(ht, token);
+            e = searchTable(ht, token);
+        }
+        else
+        {
+            // Clear existing first set to avoid adding extra tokens
+            freeNodeList(e->first);
+            e->first = NULL; // Reset the first list
+        }
+
+        // Process the rest of the tokens in the line as firsts
+        while ((token = strtok(NULL, " \t\r\n")))
+        {
+            if (strcmp(token, "eps") == 0)
+            {
+                addFirstFollow(&(e->first), token, 0); // epsilon has a flag of 0
             }
             else
-                temp->flag = -1;
-
-            element h = searchTable(ht, token);
-            if (h == NULL)
             {
-                h = ElemsForHT(token);
-                insertToHashTable(h, ht);
+                addFirstFollow(&(e->first), token, IsTerminal(token) ? 1 : -1);
             }
-
-            token = strtok(NULL, delims);
         }
-        gramRules[i] = temp;
-        i++;
     }
-    rewind(fp);
     fclose(fp);
-    return gramRules;
 }
-// reading firsts of different non terminals
-void first(hashtable ht, char *firstfile)
+
+void readFollows(Hashtable ht, const char *filename)
 {
-    FILE *fpfirst = fopen(firstfile, "r");
-    if (fpfirst == NULL)
+    FILE *fp = fopen(filename, "r");
+    char line[1024];
+    while (fgets(line, sizeof(line), fp))
     {
-        printf("Unable to read follow file.\n");
-        return;
-    }
-    char *token; // tokens of gram rules
-    token = (char *)malloc(sizeof(char) * 50);
-    char gramLine[300];
-    char delims[] = " \t\r\n\v\f";
-
-    while (fgets(gramLine, 300, fpfirst) != NULL)
-    {
-        token = strtok(gramLine, delims); // first element of the rule
-        // pushing it to hashtable
-        element lhs = searchTable(ht, token);
-        token = strtok(NULL, delims);
-
-        lhs->first = (node)malloc(sizeof(struct Node));
-        node temp = lhs->first;
-        while (token != NULL)
+        char *token = strtok(line, " \n");
+        Element e = searchTable(ht, token);
+        if (!e)
         {
-            temp->string = (char *)malloc(sizeof(char) * 50);
-            temp->flag = 1;
-            strcpy(temp->string, token);
-            token = strtok(NULL, delims);
-            if (token != NULL)
-            {
-                temp->next = (node)malloc(sizeof(struct Node));
-                temp = temp->next;
-            }
+            insertToHashTable(ht, token);
+            e = searchTable(ht, token);
         }
-        temp = NULL;
-    }
-    rewind(fpfirst);
-    fclose(fpfirst);
-}
-
-// reading follow
-void follow(hashtable ht, char *followfile)
-{
-    FILE *fpfollow = fopen(followfile, "r");
-    if (fpfollow == NULL)
-    {
-        printf("Unable to read follow file.\n");
-        return;
-    }
-    char *token; // tokens of gram rules
-    token = (char *)malloc(sizeof(char) * 50);
-    char gramLine[500];
-    char delims[] = " \t\r\n\v\f";
-
-    while (fgets(gramLine, 500, fpfollow) != NULL)
-    {
-        token = strtok(gramLine, delims); // first element of the rule
-        // pushing it to hashtable
-        element lhs = searchTable(ht, token);
-        token = strtok(NULL, delims);
-        lhs->follow = (node)malloc(sizeof(struct Node));
-        node temp = lhs->follow;
-        while (token != NULL)
+        while ((token = strtok(NULL, " \n")))
         {
-            temp->string = (char *)malloc(sizeof(char) * 50);
-            temp->flag = 1;
-            strcpy(temp->string, token);
-            token = strtok(NULL, delims);
-            if (token != NULL)
-            {
-                temp->next = (node)malloc(sizeof(struct Node));
-                temp = temp->next;
-            }
+            addFirstFollow(&(e->follow), token, 1); // All follows are terminals
         }
-        temp = NULL;
     }
-    rewind(fpfollow);
-    fclose(fpfollow);
+    fclose(fp);
 }
-void printrule(node ls)
+
+void printHashTable(Hashtable ht)
 {
-
-    node temp = ls;
-    while (temp != NULL)
+    for (int i = 0; i < HASH_SIZE; ++i)
     {
-        printf("%s %d\t", temp->string, temp->flag);
-
-        temp = temp->next;
+        for (Element elem = ht[i]; elem != NULL; elem = elem->next)
+        {
+            printf("Key: %s, Flag: %d\n", elem->value, elem->flag);
+            printf("  Firsts:");
+            for (Node *n = elem->first; n != NULL; n = n->next)
+            {
+                printf(" %s", n->string);
+            }
+            printf("\n  Follows:");
+            for (Node *n = elem->follow; n != NULL; n = n->next)
+            {
+                printf(" %s", n->string);
+            }
+            printf("\n");
+        }
     }
-    printf("\n");
-
-    return;
 }
 
-void printRuleNo(struct hash h)
-{
-    for (int i = 0; i < h.rulenum; i++)
-    {
-        printf("%d \n", h.rule[i]);
-    }
-}
+//*********TREE CODE BELOW*************
 
 stack initStack()
 {
@@ -502,10 +509,14 @@ treeNode parseCode(FILE *fp, parseTable parseTb, node *gramRule, Token *curTk, h
 
 int main()
 {
-    hashtable rules = createHashTable();
-    node *reading = readGrammar(rules);
-    first(rules, "first.txt");
-    follow(rules, "Follow_set.txt");
-    printRuleNo(*rules[2]);
+    Hashtable ht = createHashTable();
+    // Example function calls
+    // freeHashTable(ht```c
+    // Assume appropriate paths for your grammar, firsts, and follows text files
+    readGrammar(ht, "grammar.txt");
+    readFirsts(ht, "first.txt");
+    readFollows(ht, "follow_set.txt");
+    printHashTable(ht);
+    freeHashTable(ht); // Clean up all allocated memory
     return 0;
 }

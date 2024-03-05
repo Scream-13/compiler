@@ -9,12 +9,13 @@
 #define TOTAL_GRAMMAR_NONTERMINALS 49
 #define TOTAL_GRAMMAR_TERMINALS 58
 #define NOF_RULES 87
-typedef struct Node *node;
-typedef struct hash *element;
+#define HASH_SIZE 1000
+
 typedef struct TreeNode *treeNode;
-typedef element *hashtable;
+typedef Element *hashtable;
 typedef int **parseTable;
 typedef struct Stack *stack;
+typedef struct Node *node;
 
 int stack_max = 10000;
 int parserError = 0;
@@ -88,22 +89,25 @@ char *Non_Terminal_tokens[] = {"inputparameters", "typedefinitions",
                                "datatype", "fielddefinitions", "more_ids", "var", "highprecedenceoperator",
                                "otherstmts", "relationalop", "function", "mainfunction", "logicalop", "assignmentstmt",
                                "conditionalstmt", "idlist", "primitivedatatype", "declarations"};
-struct Node // stores gram
+typedef struct Node
 {
-    int flag; // terminal =1; nt=-1 , eps=0
+    int flag; // terminal = 1, non-terminal = -1, eps = 0
     char *string;
     struct Node *next;
-};
-struct hash
-{
-    node first;   // stores firsts
-    node follow;  // stores follows
-    int rule[50]; // number of rules on the rhs side
-    int rulenum;  // store rule number
-    char *value;  // non terminal
-    int flag;
-};
+} Node;
 
+typedef struct hash
+{
+    Node *first;  // stores firsts
+    Node *follow; // stores follows
+    int *rule;    // number of rules on the rhs side
+    int rulenum;  // store rule number
+    char *value;  // non-terminal
+    int flag;
+    struct hash *next; // Next element for collision handling
+} Hash, *Element;
+
+typedef Element *Hashtable;
 struct TreeNode
 {
     treeNode next;
